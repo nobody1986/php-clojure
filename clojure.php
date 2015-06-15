@@ -109,15 +109,20 @@ class Clojure {
         $this->lexer = new Lexer($prog);
         $this->syntax = new Syntax($this->lexer);
         $this->ast = $this->syntax->get_form();
+        //var_dump($this->ast);
     }
 
     function toPHP($ast){
+    	if(!$ast){return "";}
         switch($ast['type']){
             case 'Form':
+            return $this->toPHP($ast['left']) .  $this->toPHP($ast['right']);
                 break;
             case 'Double':
+            return "new Double({$ast['val']})";
                 break;
             case 'Ratio':
+            return "new Double({$ast['val']})";
                 break;
             case 'Integer':
                 break;
