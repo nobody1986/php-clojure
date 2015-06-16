@@ -58,6 +58,14 @@ class Ratio extends Type {
 
 }
 
+class Character extends Type {
+
+    function to_string() {
+        return $this->value;
+    }
+
+}
+
 class String extends Type {
 
     function to_string() {
@@ -104,6 +112,7 @@ class Clojure {
     protected $syntax;
     protected $ast;
     protected $var_table = [];
+    protected $symbol_table = [];
 
     function __construct($prog) {
         $this->lexer = new Lexer($prog);
@@ -112,33 +121,41 @@ class Clojure {
         //var_dump($this->ast);
     }
 
-    function toPHP($ast){
+    function toPHP($ast,$symbol_table=[],$isQuote=false){
     	if(!$ast){return "";}
         switch($ast['type']){
             case 'Form':
-            return $this->toPHP($ast['left']) .  $this->toPHP($ast['right']);
+            return $this->toPHP($ast['left'],$symbol_table,$isQuote) .  $this->toPHP($ast['right'],$symbol_table,$isQuote);
                 break;
             case 'Double':
             return "new Double({$ast['val']})";
                 break;
             case 'Ratio':
-            return "new Double({$ast['val']})";
+            return "new Ratio({$ast['val']})";
                 break;
             case 'Integer':
+            return "new Integer({$ast['val']})";
                 break;
             case 'String':
+            return "new String(\"" .(addcslashes($ast['val'])). "\")";
                 break;
             case 'Quote':
+            return $this->toPHP($ast['left'],$symbol_table,true);
                 break;
             case 'Character':
+            return "new Character({$ast['val']})";
                 break;
             case 'Regex':
+            return "new Regex({$ast['val']})";
                 break;
             case 'Boolean':
+            return "new Boolean({$ast['val']})";
                 break;
             case 'List':
+            return "new List([])";
                 break;
             case 'Nil':
+            return "";
                 break;
             case 'Map':
                 break;
@@ -147,7 +164,14 @@ class Clojure {
             case 'Vector':
                 break;
             case 'Atom':
+            if($isQuote){
+                return "\"{$ast['val']}\"";
+            }else{
+
+            }
                 break;
+            }
+            }
         }
     }
     
