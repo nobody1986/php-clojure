@@ -14,7 +14,7 @@
 require("lexer.php");
 require("syntax.php");
 
-class Clojure {
+class Interpreter {
 
     protected $lexer;
     protected $syntax;
