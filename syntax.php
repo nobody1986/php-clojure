@@ -137,7 +137,7 @@ class Syntax {
                     //语法错误
                 }
             case '['://Vector
-                return $this->get_set($tok);
+                return $this->get_vector($tok);
                 break;
             case '('://List
                 return $this->get_list($tok);
