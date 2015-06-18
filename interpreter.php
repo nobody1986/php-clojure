@@ -42,6 +42,7 @@ class Interpreter {
                 if (empty($ast['right'])) {
                     return $this->eval2($ast['left'], $symbol_table, $isQuote, $level + 1);
                 } else {
+                    $this->eval2($ast['left'], $symbol_table, $isQuote, $level + 1);
                     return $this->eval2($ast['right'], $symbol_table, $isQuote, $level + 1);
                 }
                 break;
@@ -79,13 +80,18 @@ class Interpreter {
                     }
                     return new clojure\CList($ret);
                 } else {
-                    switch ($ast['left']['val']) {
-                        case 'fn':
-                            return $this->fn($ast['right'], $symbol_table, $isQuote, $level);
-                            break;
-                        case 'def':
-                            return $this->def($ast['right'], $symbol_table, $isQuote, $level);
-                            break;
+                    if ($ast['left']['type'] == 'Atom') {
+                        switch ($ast['left']['val']) {
+                            case 'fn':
+                                return $this->fn($ast['right'], $symbol_table, $isQuote, $level);
+                                break;
+                            case 'def':
+                                return $this->def($ast['right'], $symbol_table, $isQuote, $level);
+                                break;
+                            case 'if':
+                                return $this->cond($ast['right'], $symbol_table, $isQuote, $level);
+                                break;
+                        }
                     }
                     $func = $this->eval2($ast['left'], $symbol_table, $isQuote, $level);
                     $args = [];
@@ -137,66 +143,29 @@ class Interpreter {
         return $func;
     }
 
-    function add(&$ast, &$symbol_table, $isQuote, $level) {
-        $args = [];
-        $arg = $ast;
-        while ($arg['right']) {
-            $args [] = $this->toPHP($arg['left'], $symbol_table, $isQuote, $level + 1);
-            $arg = $arg['right'];
-        }
-        return sprintf("(%s)", implode("+", $args));
-    }
-
-    function sub(&$ast, &$symbol_table, $isQuote, $level) {
-        $args = [];
-        $arg = $ast;
-        while ($arg['right']) {
-            $args [] = $this->toPHP($arg['left'], $symbol_table, $isQuote, $level + 1);
-            $arg = $arg['right'];
-        }
-        return sprintf("(%s)", implode("-", $args));
-    }
-
-    function mul(&$ast, &$symbol_table, $isQuote, $level) {
-        $args = [];
-        $arg = $ast;
-        while ($arg['right']) {
-            $args [] = $this->toPHP($arg['left'], $symbol_table, $isQuote, $level + 1);
-            $arg = $arg['right'];
-        }
-        return sprintf("(%s)", implode("*", $args));
-    }
-
-    function div(&$ast, &$symbol_table, $isQuote, $level) {
-        $args = [];
-        $arg = $ast;
-        while ($arg['right']) {
-            $args [] = $this->toPHP($arg['left'], $symbol_table, $isQuote, $level + 1);
-            $arg = $arg['right'];
-        }
-        return sprintf("(%s)", implode("/", $args));
-    }
-
-    function mod(&$ast, &$symbol_table, $isQuote, $level) {
-        $args = [];
-        $arg = $ast;
-        while ($arg['right']) {
-            $args [] = $this->toPHP($arg['left'], $symbol_table, $isQuote, $level + 1);
-            $arg = $arg['right'];
-        }
-        return sprintf("(%s)", implode("%", $args));
+    function mkSymName($name, $symbol_table, $level) {
+        return "{$name}_{$level}_" . sizeof($symbol_table) . "_" . rand(0, 100);
     }
 
     function fn(&$ast, &$symbol_table, $isQuote, $level) {
-        $func = $this->mkSymName($ast['left'], $symbol_table, $level, true);
+//        $func = $this->mkSymName('closure', $symbol_table, $level);
         $args = [];
-        $arg = $ast['right']['left'];
+        $arg = $ast['left'];
         while ($arg['right']) {
-            $args [] = $this->mkSymName($arg['left'], $symbol_table, $level);
+            $args [] = $arg['left']['val'];
             $arg = $arg['right'];
         }
-        $body = $this->toPHP($ast['right']['right']['left'], $symbol_table, $isQuote, $level + 1);
-        return sprintf("function %s(%s){return %s;}", $func, implode(',', $args), $body);
+//        $symbol_table[$func] = new clojure\Lambda($args,$ast['right']['right']['left']);
+//        return $symbol_table[$func];
+        return new clojure\Lambda($args, $ast['right']['left']);
+        }
+        function cond(&$ast, &$symbol_table, $isQuote, $level) {
+        $cond = $this->eval2($ast['left'], $symbol_table, $isQuote, $level);
+        if($cond->get_value()){
+            return $this->eval2($ast['right']['left'], $symbol_table, $isQuote, $level + 1);
+        }else if(!empty($ast['right']['right'])){
+            return $this->eval2($ast['right']['right']['left'], $symbol_table, $isQuote, $level + 1);
+        }
     }
 
     function def(&$ast, &$symbol_table, $isQuote, $level) {
@@ -206,62 +175,86 @@ class Interpreter {
 
 }
 
-$obj = new Interpreter("((fn [x] (+ x 1)) 2)");
-$obj->mkFunc('+', function($args,$env,$local_env) {
-    $ret = 0; 
-
-    foreach($args as $arg){
+$obj = new Interpreter("(def fib (fn [n] 
+    (if (= n 0) 0
+        (if (= n 1) 1
+            (+ (fib (- n 1)) (fib (- n 2)))))))(fib 20)");
+$obj->mkFunc('+', function($args, $env, $local_env) {
+    $ret = 0;
+    foreach ($args as $arg) {
         switch (get_class($arg)) {
             case 'clojure\\Integer':
                 $int = $arg->get_value();
-                if(is_array($ret)){
-                    $ret[0] = $int * $ret[1] +  $ret[0];
-                }else{
+                if (is_array($ret)) {
+                    $ret[0] = $int * $ret[1] + $ret[0];
+                } else {
                     $ret += $int;
                 }
                 break;
             case 'clojure\\Double':
-
                 $double = $arg->get_value();
-                if(is_array($ret)){
-                    $ret = $double + $ret[0] / $ret[1]  ;
-                }else{
+                if (is_array($ret)) {
+                    $ret = $double + $ret[0] / $ret[1];
+                } else {
                     $ret += $double;
                 }
                 break;
             case 'clojure\\Ratio':
                 $ratio = $arg->get_value();
-                if(is_integer($ret)){
+                if (is_integer($ret)) {
                     $ratio[0] = $ratio[0] + $ratio[1] * $ret;
                     $ret = $ratio;
-                }else if(is_array($ret)){
+                } else if (is_array($ret)) {
                     $ret[0] = $ratio[0] * $ret[1] + $ratio[1] * $ret[0];
-                    $ret[1] = $ret[1] * $ratio[1]; 
-                }else{
+                    $ret[1] = $ret[1] * $ratio[1];
+                } else {
                     $ret += $ratio[0] / $ratio[1];
                 }
-            
                 break;
             default://类型错误
                 break;
         }
     }
-    if(is_integer($ret)){
+    if (is_integer($ret)) {
         return new clojure\Integer($ret);
-    }elseif(is_float($ret)){
+    } elseif (is_float($ret)) {
         return new clojure\Double($ret);
-    }else{
+    } else {
         return new clojure\Ratio($ret);
     }
-    
 });
-$obj->mkFunc('class', function($args,$env,$local_env) {
-    $ret = 0; 
-    if(sizeof($args) == 1){
-        return new clojure\Atom(get_class($args[0]));
-    }else{
 
+$obj->mkFunc('/', function($args, $env, $local_env) {
+    $tmp = null;
+    foreach ($args as $arg) {
+        if (empty($tmp)) {
+            $tmp = $arg;
+        } else {
+            $tmp = $tmp->div($arg);
+        }
     }
-    
+    return $tmp;
+});
+$obj->mkFunc('-', function($args, $env, $local_env) {
+    $tmp = null;
+    foreach ($args as $arg) {
+        if (empty($tmp)) {
+            $tmp = $arg;
+        } else {
+            $tmp = $tmp->sub($arg);
+        }
+    }
+    return $tmp;
+});
+$obj->mkFunc('=', function($args, $env, $local_env) {
+    return new clojure\Boolean($args[0]->get_value() == $args[1]->get_value());
+});
+$obj->mkFunc('class', function($args, $env, $local_env) {
+    $ret = 0;
+    if (sizeof($args) == 1) {
+        return new clojure\Atom(get_class($args[0]));
+    } else {
+        
+    }
 });
 var_Dump($obj->eval2($obj->getAst()));

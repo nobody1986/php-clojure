@@ -1,4 +1,5 @@
 <?php
+
 namespace clojure;
 
 abstract class Type {
@@ -9,7 +10,6 @@ abstract class Type {
         $this->value = $value;
     }
 
-
     abstract function to_string();
 
     function get_value() {
@@ -19,12 +19,33 @@ abstract class Type {
     function get_class() {
         return __CLASS__;
     }
+
 }
 
 class Double extends Type {
 
     function to_string() {
         return $this->value . '';
+    }
+
+    function div($obj) {
+        $val = $obj->get_value();
+        if (is_array($val)) {
+            $ret = $this->value / $val[0] / $val[1];
+        } else {
+            $ret = $this->value / $val;
+        }
+        return new Double($ret);
+    }
+
+    function sub($obj) {
+        $val = $obj->get_value();
+        if (is_array($val)) {
+            $ret = $this->value - $val[0] / $val[1];
+        } else {
+            $ret = $this->value - $val;
+        }
+        return new Double($ret);
     }
 
 }
@@ -35,12 +56,56 @@ class Integer extends Type {
         return $this->value . '';
     }
 
+    function div($obj) {
+        $val = $obj->get_value();
+        if (is_array($val)) {
+            return new Ratio([$this->value * $val[0], $val[1]]);
+        } else if (is_integer($val)) {
+            return new Ratio([$this->value, $val]);
+        } else {
+            return new Double($this->value / $val);
+        }
+    }
+
+    function sub($obj) {
+        $val = $obj->get_value();
+        if (is_array($val)) {
+            return new Ratio([$this->value * $val[1] - $val[0], $val[1]]);
+        } else if (is_integer($val)) {
+            return new Integer($this->value - $val);
+        } else {
+            return new Double($this->value - $val);
+        }
+    }
+
 }
 
 class Ratio extends Type {
 
     function to_string() {
         return $this->value[0] . '/' . $this->value[1];
+    }
+
+    function div($obj) {
+        $val = $obj->get_value();
+        if (is_array($val)) {
+            return new Ratio([$this->value[0] * $val[1], $this->value[1] * $val[0]]);
+        } else if (is_integer($val)) {
+            return new Ratio([$this->value[0], $this->value[1] * $val]);
+        } else {
+            return new Double($this->value[0] / $this->value[1] / $val);
+        }
+    }
+
+    function sub($obj) {
+        $val = $obj->get_value();
+        if (is_array($val)) {
+            return new Ratio([$this->value[0] * $val[1]  -  $this->value[1] * $val[0], $this->value[1] * $val[1]]);
+        } else if (is_integer($val)) {
+            return new Ratio([$this->value[0] - $this->value[1] * $val, $this->value[1] ]);
+        } else {
+            return new Double($this->value[0] / $this->value[1] - $val);
+        }
     }
 
 }
@@ -124,6 +189,13 @@ class Lambda extends Type {
         return "<CLOSURE>";
     }
 
+    function call($args, $env, $local_env) {
+        foreach ($this->arglist as $key => $arg) {
+            $local_env[$arg] = $args[$key];
+        }
+        return $env->eval2($this->body, $local_env, false, 0);
+    }
+
 }
 
 class Func extends Type {
@@ -153,7 +225,7 @@ class Func extends Type {
     function call($args, $env, $local_env) {
         if ($this->isNative()) {
             $func = $this->body;
-            return  $func($args, $env, $local_env);
+            return $func($args, $env, $local_env);
         } else {
             foreach ($this->arglist as $key => $arg) {
                 $local_env[$arg] = $args[$key];

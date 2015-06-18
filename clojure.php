@@ -121,32 +121,30 @@ class Clojure {
                 if ($isQuote) {
                     return "\"{$ast['val']}\"";
                 } else {
-                    return $this->mkSymName($ast,$symbol_table,$level);
-                    
+                    return $this->mkSymName($ast, $symbol_table, $level);
                 }
                 break;
         }
     }
 
-    function mkSymName($ast,&$symbol_table,$level,$isGlobal=false){
+    function mkSymName($ast, &$symbol_table, $level, $isGlobal = false) {
         if ($key = array_search($ast['val'], $symbol_table)) {
-                        return "{$key}";
-                    } else {
-                        if ($key = array_search($ast['val'], $this->global_symbol_table)) {
-                            return "{$key}";
-                        }
-                        //new symbol
-                        if($isGlobal){
-$key = "\$sym_{$level}_" . sizeof($symbol_table) . "_" . rand(1, 100);
-                            $this->global_symbol_table[$key] = $ast['val'];
-                            return "{$key}";
-                        }else{
-                            $key = "\$sym_{$level}_" . sizeof($symbol_table) . "_" . rand(1, 100);
-                            $symbol_table[$key] = $ast['val'];
-                            return "{$key}";
-                        }
-                        
-                    }
+            return "{$key}";
+        } else {
+            if ($key = array_search($ast['val'], $this->global_symbol_table)) {
+                return "{$key}";
+            }
+            //new symbol
+            if ($isGlobal) {
+                $key = "\$sym_{$level}_" . sizeof($symbol_table) . "_" . rand(1, 100);
+                $this->global_symbol_table[$key] = $ast['val'];
+                return "{$key}";
+            } else {
+                $key = "\$sym_{$level}_" . sizeof($symbol_table) . "_" . rand(1, 100);
+                $symbol_table[$key] = $ast['val'];
+                return "{$key}";
+            }
+        }
     }
 
     function add(&$ast, &$symbol_table, $isQuote, $level) {
@@ -200,11 +198,11 @@ $key = "\$sym_{$level}_" . sizeof($symbol_table) . "_" . rand(1, 100);
     }
 
     function defn(&$ast, &$symbol_table, $isQuote, $level) {
-        $func = $this->mkSymName($ast['left'], $symbol_table,   $level,true );
+        $func = $this->mkSymName($ast['left'], $symbol_table, $level, true);
         $args = [];
         $arg = $ast['right']['left'];
         while ($arg['right']) {
-            $args [] = $this->mkSymName($arg['left'], $symbol_table,   $level );
+            $args [] = $this->mkSymName($arg['left'], $symbol_table, $level);
             $arg = $arg['right'];
         }
         $body = $this->toPHP($ast['right']['right']['left'], $symbol_table, $isQuote, $level + 1);
@@ -212,14 +210,14 @@ $key = "\$sym_{$level}_" . sizeof($symbol_table) . "_" . rand(1, 100);
     }
 
     function def(&$ast, &$symbol_table, $isQuote, $level) {
-        $func = $this->mkSymName($ast['left'], $symbol_table,   $level,true );
+        $func = $this->mkSymName($ast['left'], $symbol_table, $level, true);
         $body = $this->toPHP($ast['right']['left'], $symbol_table, $isQuote, $level + 1);
-        return sprintf(" (%s = %s)",$func,$body);
+        return sprintf(" (%s = %s)", $func, $body);
     }
 
     function eval1($ast) {
         
-    } 
+    }
 
 }
 
