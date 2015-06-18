@@ -9,9 +9,6 @@ abstract class Type {
         $this->value = $value;
     }
 
-    function get_class() {
-        return __CLASS__;
-    }
 
     abstract function to_string();
 
@@ -19,6 +16,9 @@ abstract class Type {
         return $this->value;
     }
 
+    function get_class() {
+        return __CLASS__;
+    }
 }
 
 class Double extends Type {
@@ -152,7 +152,8 @@ class Func extends Type {
 
     function call($args, $env, $local_env) {
         if ($this->isNative()) {
-            return call_user_func($this->body, [$args, $env, $local_env]);
+            $func = $this->body;
+            return  $func($args, $env, $local_env);
         } else {
             foreach ($this->arglist as $key => $arg) {
                 $local_env[$arg] = $args[$key];

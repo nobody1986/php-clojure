@@ -206,10 +206,62 @@ class Interpreter {
 
 }
 
-$obj = new Interpreter("(+ 1 1)");
-$obj->mkFunc('+', function($env) {
-    var_dump($env == array_values($env));
-    list($args,$env,$local_env) = ($env);
-    return new clojure\Integer(2);
+$obj = new Interpreter("((fn [x] (+ x 1)) 2)");
+$obj->mkFunc('+', function($args,$env,$local_env) {
+    $ret = 0; 
+
+    foreach($args as $arg){
+        switch (get_class($arg)) {
+            case 'clojure\\Integer':
+                $int = $arg->get_value();
+                if(is_array($ret)){
+                    $ret[0] = $int * $ret[1] +  $ret[0];
+                }else{
+                    $ret += $int;
+                }
+                break;
+            case 'clojure\\Double':
+
+                $double = $arg->get_value();
+                if(is_array($ret)){
+                    $ret = $double + $ret[0] / $ret[1]  ;
+                }else{
+                    $ret += $double;
+                }
+                break;
+            case 'clojure\\Ratio':
+                $ratio = $arg->get_value();
+                if(is_integer($ret)){
+                    $ratio[0] = $ratio[0] + $ratio[1] * $ret;
+                    $ret = $ratio;
+                }else if(is_array($ret)){
+                    $ret[0] = $ratio[0] * $ret[1] + $ratio[1] * $ret[0];
+                    $ret[1] = $ret[1] * $ratio[1]; 
+                }else{
+                    $ret += $ratio[0] / $ratio[1];
+                }
+            
+                break;
+            default://类型错误
+                break;
+        }
+    }
+    if(is_integer($ret)){
+        return new clojure\Integer($ret);
+    }elseif(is_float($ret)){
+        return new clojure\Double($ret);
+    }else{
+        return new clojure\Ratio($ret);
+    }
+    
+});
+$obj->mkFunc('class', function($args,$env,$local_env) {
+    $ret = 0; 
+    if(sizeof($args) == 1){
+        return new clojure\Atom(get_class($args[0]));
+    }else{
+
+    }
+    
 });
 var_Dump($obj->eval2($obj->getAst()));
