@@ -78,6 +78,17 @@ class Integer extends Type {
         }
     }
 
+    function mul($obj) {
+        $val = $obj->get_value();
+        if (is_array($val)) {
+            return new Ratio([$this->value * $val[0] , $val[1] ]);
+        } else if (is_integer($val)) {
+            return new Integer($this->value * $val);
+        } else {
+            return new Double($this->value * $val);
+        }
+    }
+
 }
 
 class Ratio extends Type {
@@ -108,6 +119,17 @@ class Ratio extends Type {
         }
     }
 
+    function mul($obj) {
+        $val = $obj->get_value();
+        if (is_array($val)) {
+            return new Ratio([$this->value[0] * $val[0]  ,  $this->value[1] * $val[1] ]);
+        } else if (is_integer($val)) {
+            return new Ratio([$this->value[0]  * $val, $this->value[1] ]);
+        } else {
+            return new Double($this->value[0] / $this->value[1] * $val);
+        }
+    }
+
 }
 
 class Character extends Type {
@@ -119,6 +141,14 @@ class Character extends Type {
 }
 
 class CString extends Type {
+
+    function to_string() {
+        return $this->value . '';
+    }
+
+}
+
+class Atom extends Type {
 
     function to_string() {
         return $this->value . '';
@@ -162,6 +192,11 @@ class Boolean extends Type {
 
     function to_string() {
 //        return $this->value . '';
+        if($this->value){
+            return "TRUE";
+        }else{
+            return "FALSE";
+        }
     }
 
 }

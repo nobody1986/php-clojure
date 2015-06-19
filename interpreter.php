@@ -175,10 +175,7 @@ class Interpreter {
 
 }
 
-$obj = new Interpreter("(def fib (fn [n] 
-    (if (= n 0) 0
-        (if (= n 1) 1
-            (+ (fib (- n 1)) (fib (- n 2)))))))(fib 20)");
+$obj = new Interpreter("(class 1)");
 $obj->mkFunc('+', function($args, $env, $local_env) {
     $ret = 0;
     foreach ($args as $arg) {
@@ -246,8 +243,25 @@ $obj->mkFunc('-', function($args, $env, $local_env) {
     }
     return $tmp;
 });
+$obj->mkFunc('*', function($args, $env, $local_env) {
+    $tmp = null;
+    foreach ($args as $arg) {
+        if (empty($tmp)) {
+            $tmp = $arg;
+        } else {
+            $tmp = $tmp->mul($arg);
+        }
+    }
+    return $tmp;
+});
 $obj->mkFunc('=', function($args, $env, $local_env) {
     return new clojure\Boolean($args[0]->get_value() == $args[1]->get_value());
+});
+$obj->mkFunc('>', function($args, $env, $local_env) {
+    return new clojure\Boolean($args[0]->get_value() > $args[1]->get_value());
+});
+$obj->mkFunc('<', function($args, $env, $local_env) {
+    return new clojure\Boolean($args[0]->get_value() < $args[1]->get_value());
 });
 $obj->mkFunc('class', function($args, $env, $local_env) {
     $ret = 0;
